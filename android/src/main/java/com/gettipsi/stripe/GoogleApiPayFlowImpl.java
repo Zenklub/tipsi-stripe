@@ -1,4 +1,3 @@
-
 package com.gettipsi.stripe;
 
 import android.app.Activity;
@@ -26,12 +25,7 @@ import com.google.android.gms.wallet.TransactionInfo;
 import com.google.android.gms.wallet.Wallet;
 import com.google.android.gms.wallet.WalletConstants;
 import com.stripe.android.BuildConfig;
-import com.stripe.android.Stripe;
-import com.stripe.android.model.GooglePayResult;
 import com.stripe.android.model.Token;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -100,7 +94,7 @@ public final class GoogleApiPayFlowImpl extends PayFlow {
       .setPaymentMethodTokenizationType(WalletConstants.PAYMENT_METHOD_TOKENIZATION_TYPE_PAYMENT_GATEWAY)
       .addParameter("gateway", "stripe")
       .addParameter("stripe:publishableKey", getPublishableKey())
-      .addParameter("stripe:version", Stripe.VERSION_NAME)
+      .addParameter("stripe:version", BuildConfig.VERSION_NAME)
       .build();
   }
 
@@ -236,13 +230,7 @@ public final class GoogleApiPayFlowImpl extends PayFlow {
             PaymentData paymentData = PaymentData.getFromIntent(data);
             ArgCheck.nonNull(paymentData);
             String tokenJson = paymentData.getPaymentMethodToken().getToken();
-            JSONObject obj = null;
-            try {
-              obj = new JSONObject(tokenJson);
-            } catch (JSONException e) {
-              e.printStackTrace();
-            }
-            Token token = Token.fromJson(obj);
+            Token token = Token.fromString(tokenJson);
             if (token == null) {
               payPromise.reject(
                 getErrorCode("parseResponse"),
@@ -284,4 +272,3 @@ public final class GoogleApiPayFlowImpl extends PayFlow {
   }
 
 }
-

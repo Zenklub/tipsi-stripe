@@ -1,12 +1,12 @@
 package com.gettipsi.stripe;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
 import android.text.TextUtils;
 
 import com.facebook.react.bridge.ActivityEventListener;
@@ -18,6 +18,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
+import com.facebook.react.bridge.WritableMap;
 import com.gettipsi.stripe.dialog.AddCardDialogFragment;
 import com.gettipsi.stripe.util.ArgCheck;
 import com.gettipsi.stripe.util.Converters;
@@ -26,17 +27,18 @@ import com.google.android.gms.wallet.WalletConstants;
 import com.stripe.android.ApiResultCallback;
 import com.stripe.android.AppInfo;
 import com.stripe.android.PaymentIntentResult;
-import com.stripe.android.PaymentConfiguration;
 import com.stripe.android.SetupIntentResult;
-import com.stripe.android.ApiResultCallback;
+import com.stripe.android.SourceCallback;
 import com.stripe.android.Stripe;
+import com.stripe.android.TokenCallback;
 import com.stripe.android.model.Address;
 import com.stripe.android.model.ConfirmPaymentIntentParams;
 import com.stripe.android.model.ConfirmSetupIntentParams;
+import com.stripe.android.model.PaymentIntent;
 import com.stripe.android.model.PaymentMethod;
 import com.stripe.android.model.PaymentMethodCreateParams;
 import com.stripe.android.model.Source;
-import com.stripe.android.model.Source.Status;
+import com.stripe.android.model.Source.SourceStatus;
 import com.stripe.android.model.SourceParams;
 import com.stripe.android.model.StripeIntent;
 import com.stripe.android.model.Token;
@@ -56,6 +58,7 @@ import static com.gettipsi.stripe.util.Converters.convertPaymentMethodToWritable
 import static com.gettipsi.stripe.util.Converters.convertSetupIntentResultToWritableMap;
 import static com.gettipsi.stripe.util.Converters.convertSourceToWritableMap;
 import static com.gettipsi.stripe.util.Converters.convertTokenToWritableMap;
+import static com.gettipsi.stripe.util.Converters.createBankAccount;
 import static com.gettipsi.stripe.util.Converters.createCard;
 import static com.gettipsi.stripe.util.Converters.getBooleanOrNull;
 import static com.gettipsi.stripe.util.Converters.getMapOrNull;
@@ -145,8 +148,6 @@ public class StripeModule extends ReactContextBaseJavaModule {
       Stripe.setAppInfo(AppInfo.create(APP_INFO_NAME, APP_INFO_VERSION, APP_INFO_URL));
       mStripe = new Stripe(getReactApplicationContext(), mPublicKey);
       getPayFlow().setPublishableKey(mPublicKey);
-
-      PaymentConfiguration.init(getReactApplicationContext(), mPublicKey);
     }
 
     if (newAndroidPayMode != null) {
@@ -204,10 +205,10 @@ public class StripeModule extends ReactContextBaseJavaModule {
       ArgCheck.nonNull(mStripe);
       ArgCheck.notEmptyString(mPublicKey);
 
-      mStripe.createCardToken(
+      mStripe.createToken(
         createCard(cardData),
         mPublicKey,
-        new ApiResultCallback<Token>() {
+        new TokenCallback() {
           public void onSuccess(Token token) {
             promise.resolve(convertTokenToWritableMap(token));
           }
@@ -226,6 +227,20 @@ public class StripeModule extends ReactContextBaseJavaModule {
     try {
       ArgCheck.nonNull(mStripe);
       ArgCheck.notEmptyString(mPublicKey);
+
+      mStripe.createBankAccountToken(
+        createBankAccount(accountData),
+        mPublicKey,
+        null,
+        new TokenCallback() {
+          public void onSuccess(Token token) {
+            promise.resolve(convertTokenToWritableMap(token));
+          }
+          public void onError(Exception error) {
+            error.printStackTrace();
+            promise.reject(toErrorCode(error), error.getMessage());
+          }
+        });
     } catch (Exception e) {
       promise.reject(toErrorCode(e), e.getMessage());
     }
@@ -269,12 +284,12 @@ public class StripeModule extends ReactContextBaseJavaModule {
             StripeIntent.Status resultingStatus = result.getIntent().getStatus();
 
             if (Succeeded.equals(resultingStatus) ||
-              RequiresCapture.equals(resultingStatus) ||
-              RequiresConfirmation.equals(resultingStatus)) {
+                RequiresCapture.equals(resultingStatus) ||
+                RequiresConfirmation.equals(resultingStatus)) {
               promise.resolve(convertPaymentIntentResultToWritableMap(result));
             } else {
               if (Canceled.equals(resultingStatus) ||
-                RequiresAction.equals(resultingStatus)
+                  RequiresAction.equals(resultingStatus)
               ) {
                 promise.reject(CANCELLED, CANCELLED);      // TODO - normalize the message
               } else {
@@ -362,6 +377,18 @@ public class StripeModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
+  public void retrievePaymentIntent(@NonNull String clientSecret, final Promise promise) {
+    try {
+      PaymentIntent intent = mStripe.retrievePaymentIntentSynchronous(clientSecret);
+      WritableMap intentMapped = Converters.convertPaymentIntentToWritableMap(intent);
+      promise.resolve(intentMapped);
+    } catch (Exception e) {
+      promise.reject(toErrorCode(e), e.getMessage());
+    }
+
+  }
+
+  @ReactMethod
   public void authenticatePaymentIntent(final ReadableMap options, final Promise promise) {
     attachPaymentResultActivityListener(promise);
 
@@ -421,7 +448,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
 
     ArgCheck.nonNull(sourceParams);
 
-    mStripe.createSource(sourceParams, new ApiResultCallback<Source>() {
+    mStripe.createSource(sourceParams, new SourceCallback() {
       @Override
       public void onError(Exception error) {
         promise.reject(toErrorCode(error));
@@ -429,7 +456,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
 
       @Override
       public void onSuccess(Source source) {
-        if (Source.Flow.Redirect.equals(source.getFlow())) {
+        if (Source.SourceFlow.REDIRECT.equals(source.getFlow())) {
           Activity currentActivity = getCurrentActivity();
           if (currentActivity == null) {
             promise.reject(
@@ -441,8 +468,8 @@ public class StripeModule extends ReactContextBaseJavaModule {
             mCreatedSource = source;
             String redirectUrl = source.getRedirect().getUrl();
             Intent browserIntent = new Intent(currentActivity, OpenBrowserActivity.class)
-              .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)
-              .putExtra(OpenBrowserActivity.EXTRA_URL, redirectUrl);
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(OpenBrowserActivity.EXTRA_URL, redirectUrl);
             currentActivity.startActivity(browserIntent);
           }
         } else {
@@ -499,39 +526,39 @@ public class StripeModule extends ReactContextBaseJavaModule {
       PaymentMethodCreateParams pmcp = extractPaymentMethodCreateParams(paymentMethod);
       cpip = ConfirmPaymentIntentParams.createWithPaymentMethodCreateParams(pmcp, clientSecret, returnURL, savePaymentMethod, extraParams);
 
-      // Create with Payment Method ID
+    // Create with Payment Method ID
     } else if (paymentMethodId != null) {
 
       cpip = ConfirmPaymentIntentParams.createWithPaymentMethodId(paymentMethodId, clientSecret, returnURL, savePaymentMethod, extraParams);
 
-      // Create with Source
-      /**
-       Support for creating a Source while confirming a PaymentIntent is not being included
-       at this time, however, for compatibility with existing saved Sources, you can still confirm
-       a payment intent using a pre-existing Source by specifying its 'sourceId', as shown in the next
-       branch
-       */
+    // Create with Source
+    /**
+    Support for creating a Source while confirming a PaymentIntent is not being included
+    at this time, however, for compatibility with existing saved Sources, you can still confirm
+    a payment intent using a pre-existing Source by specifying its 'sourceId', as shown in the next
+    branch
+    */
     /*
     } else if (source != null) {
       SourceParams sourceParams = extractSourceParams(source);
       cpip = ConfirmPaymentIntentParams.createWithSourceParams(sourceParams, clientSecret, returnURL, savePaymentMethod, extraParams);
     */
 
-      // Create with Source ID
-      /**
-       If you have a sourceId, pass it into the paymentMethodId parameter instead!
-       The payment_method parameter of a payment intent is fully compatible with Sources.
-       Reference: https://stripe.com/docs/api/payment_intents/confirm#confirm_payment_intent-payment_method
-       */
+    // Create with Source ID
+    /**
+    If you have a sourceId, pass it into the paymentMethodId parameter instead!
+    The payment_method parameter of a payment intent is fully compatible with Sources.
+    Reference: https://stripe.com/docs/api/payment_intents/confirm#confirm_payment_intent-payment_method
+    */
     /*
     } else if (sourceId != null) {
       cpip = ConfirmPaymentIntentParams.createWithSourceId(sourceId, clientSecret, returnURL, savePaymentMethod, extraParams);
     */
 
-      /**
-       This branch can be used if the client secret refers to a payment intent that already
-       has payment method information and just needs to be confirmed.
-       */
+    /**
+    This branch can be used if the client secret refers to a payment intent that already
+    has payment method information and just needs to be confirmed.
+    */
     } else {
       cpip = ConfirmPaymentIntentParams.create(clientSecret, returnURL);
     }
@@ -546,6 +573,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
     ReadableMap cardParams = getMapOrNull(options, "card");
     ReadableMap billingDetailsParams = getMapOrNull(options, "billingDetails");
     ReadableMap metadataParams = getMapOrNull(options, "metadata");
+    ReadableMap boletoParams = getMapOrNull(options, "boleto");
 
     PaymentMethodCreateParams.Card card = null;
     PaymentMethod.BillingDetails billingDetails = null;
@@ -581,6 +609,10 @@ public class StripeModule extends ReactContextBaseJavaModule {
         setName(getStringOrNull(billingDetailsParams,"name")).
         setPhone(getStringOrNull(billingDetailsParams,"phone")).
         build();
+    }
+
+    if (boletoParams != null) {
+
     }
 
     if (cardParams != null) {
@@ -670,7 +702,6 @@ public class StripeModule extends ReactContextBaseJavaModule {
   }
 
 
-  @SuppressLint("StaticFieldLeak")
   void processRedirect(@Nullable Uri redirectData) {
     if (mCreatedSource == null || mCreateSourcePromise == null) {
 
@@ -728,18 +759,18 @@ public class StripeModule extends ReactContextBaseJavaModule {
         }
 
         switch (source.getStatus()) {
-          case Chargeable:
-          case Consumed:
+          case SourceStatus.CHARGEABLE:
+          case SourceStatus.CONSUMED:
             promise.resolve(convertSourceToWritableMap(source));
             break;
-          case Canceled:
+          case SourceStatus.CANCELED:
             promise.reject(
               getErrorCode(mErrorCodes, "redirectCancelled"),
               getDescription(mErrorCodes, "redirectCancelled")
             );
             break;
-          case Pending:
-          case Failed:
+          case SourceStatus.PENDING:
+          case SourceStatus.FAILED:
           default:
             promise.reject(
               getErrorCode(mErrorCodes, "redirectFailed"),
@@ -752,4 +783,3 @@ public class StripeModule extends ReactContextBaseJavaModule {
   }
 
 }
-

@@ -305,6 +305,17 @@ class Stripe {
   }
 
   /**
+   * Retrieves the latest paymentIntent
+   * @param {string} clientSecret
+   * @returns {Promise<PaymentIntent>}
+   */
+   retrievePaymentIntent = (clientSecret = '') => {
+    checkInit(this)
+    return StripeModule.retrievePaymentIntent(clientSecret)
+  }
+
+
+  /**
    * @param {AuthenticatePaymentIntentParams} params
    * @returns {Promise<PaymentIntentAuthenticationResult>}
    */
