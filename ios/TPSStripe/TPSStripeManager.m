@@ -367,9 +367,12 @@ RCT_EXPORT_METHOD(createPaymentMethod:(NSDictionary<NSString *, id> *)untypedPar
 RCT_EXPORT_METHOD(retrievePaymentIntent:(NSString *)clientSecret
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
-    
+
     STPAPIClient *api = self.newAPIClient;
-    
+
+    promiseResolver = resolve;
+    promiseRejector = reject;
+
     [api retrievePaymentIntentWithClientSecret:clientSecret completion:^(STPPaymentIntent * _Nullable intent, NSError * _Nullable error) {
         if (!intent && error) {
             self->requestIsCompleted = YES;
@@ -1099,18 +1102,18 @@ RCT_EXPORT_METHOD(openApplePaySetup) {
         return @{ TPSStripeParam(PaymentIntent, status): [RCTConvert STPPaymentIntentStatusString: STPPaymentIntentStatusUnknown] };
     }
 
-    
+
     NSMutableDictionary * result
     = @{
         TPSStripeParam(PaymentIntent, id): intent.stripeId,
         TPSStripeParam(PaymentIntent, status): [RCTConvert STPPaymentIntentStatusString: intent.status],
         }.mutableCopy;
-    
+
     NSDictionary *allResponseFields = intent.allResponseFields;
     NSDictionary *latestPaymentError = [allResponseFields valueForKey:@"last_payment_error"];
     NSDictionary *cancellationReason = [allResponseFields valueForKey:@"cancellation_reason"];
     NSArray *keys = allResponseFields.allKeys;
-    
+
     [result setValue:latestPaymentError forKey:TPSStripeParam(PaymentIntent, latestPaymentError)];
     [result setValue:cancellationReason forKey:TPSStripeParam(PaymentIntent, cancellationReason)];
     // Optional parameters need to be serialized differently than non-nullable ones
