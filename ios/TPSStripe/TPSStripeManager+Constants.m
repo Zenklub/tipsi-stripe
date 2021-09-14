@@ -72,6 +72,21 @@ TPSStripeBridgeKeyDeclare(ConfirmPaymentIntentResult, paymentIntentId);
 TPSStripeBridgeKeyDeclare(ConfirmPaymentIntentResult, paymentMethodId);
 TPSStripeBridgeKeyDeclare(ConfirmPaymentIntentResult, status);
 
+TPSStripeBridgeTypeDefine(PaymentIntent);
+TPSStripeBridgeKeyDeclare(PaymentIntent, id);
+TPSStripeBridgeKeyDeclare(PaymentIntent, paymentMethodId);
+TPSStripeBridgeKeyDeclare(PaymentIntent, status);
+TPSStripeBridgeKeyDeclare(PaymentIntent, amount);
+TPSStripeBridgeKeyDeclare(PaymentIntent, nextActionType);
+TPSStripeBridgeKeyDeclare(PaymentIntent, currency);
+TPSStripeBridgeKeyDeclare(PaymentIntent, confirmationMethod);
+TPSStripeBridgeKeyDeclare(PaymentIntent, latestPaymentError);
+TPSStripeBridgeKeyDeclare(PaymentIntent, cancellationReason);
+TPSStripeBridgeKeyDeclare(PaymentIntent, description);
+TPSStripeBridgeKeyDeclare(PaymentIntent, receiptEmail);
+TPSStripeBridgeKeyDeclare(PaymentIntent, canceledAt);
+TPSStripeBridgeKeyDeclare(PaymentIntent, createdAt);
+
 TPSStripeBridgeTypeDefine(authenticatePaymentIntent);
 TPSStripeBridgeKeyDeclare(authenticatePaymentIntent, clientSecret);
 TPSStripeBridgeKeyDeclare(authenticatePaymentIntent, returnURL);

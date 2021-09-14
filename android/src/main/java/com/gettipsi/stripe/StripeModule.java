@@ -18,6 +18,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
+import com.facebook.react.bridge.WritableMap;
 import com.gettipsi.stripe.dialog.AddCardDialogFragment;
 import com.gettipsi.stripe.util.ArgCheck;
 import com.gettipsi.stripe.util.Converters;
@@ -33,6 +34,7 @@ import com.stripe.android.Stripe;
 import com.stripe.android.model.Address;
 import com.stripe.android.model.ConfirmPaymentIntentParams;
 import com.stripe.android.model.ConfirmSetupIntentParams;
+import com.stripe.android.model.PaymentIntent;
 import com.stripe.android.model.PaymentMethod;
 import com.stripe.android.model.PaymentMethodCreateParams;
 import com.stripe.android.model.Source;
@@ -145,8 +147,6 @@ public class StripeModule extends ReactContextBaseJavaModule {
       Stripe.setAppInfo(AppInfo.create(APP_INFO_NAME, APP_INFO_VERSION, APP_INFO_URL));
       mStripe = new Stripe(getReactApplicationContext(), mPublicKey);
       getPayFlow().setPublishableKey(mPublicKey);
-
-      PaymentConfiguration.init(getReactApplicationContext(), mPublicKey);
     }
 
     if (newAndroidPayMode != null) {
@@ -204,15 +204,23 @@ public class StripeModule extends ReactContextBaseJavaModule {
       ArgCheck.nonNull(mStripe);
       ArgCheck.notEmptyString(mPublicKey);
 
-      mStripe.createCardToken(
+      mStripe.createToken(
         createCard(cardData),
         new ApiResultCallback<Token>() {
           public void onSuccess(Token token) {
             promise.resolve(convertTokenToWritableMap(token));
           }
-          public void onError(Exception error) {
-            error.printStackTrace();
-            promise.reject(toErrorCode(error), error.getMessage());
+          public void onError(Exception e) {
+            e.printStackTrace();
+            if (e.getCause() instanceof CardException) {
+              CardException exception = (CardException) e.getCause();
+              String code = exception.getCode();
+              String message = exception.getLocalizedMessage();
+              promise.reject(code, message);
+
+            } else {
+              promise.reject(toErrorCode(e), e.getMessage());
+            }
           }
         });
     } catch (Exception e) {
@@ -225,8 +233,37 @@ public class StripeModule extends ReactContextBaseJavaModule {
     try {
       ArgCheck.nonNull(mStripe);
       ArgCheck.notEmptyString(mPublicKey);
+
+      mStripe.createBankAccountToken(
+        createBankAccount(accountData),
+        mPublicKey,
+        null,
+        new TokenCallback() {
+          public void onSuccess(Token token) {
+            promise.resolve(convertTokenToWritableMap(token));
+          }
+          public void onError(Exception e) {
+            e.printStackTrace();
+            if (e.getCause() instanceof CardException) {
+              CardException exception = (CardException) e.getCause();
+              String code = exception.getCode();
+              String message = exception.getLocalizedMessage();
+              promise.reject(code, message);
+            } else {
+              promise.reject(toErrorCode(e), e.getMessage());
+            }
+          }
+        });
     } catch (Exception e) {
-      promise.reject(toErrorCode(e), e.getMessage());
+      e.printStackTrace();
+      if (e.getCause() instanceof CardException) {
+        CardException exception = (CardException) e.getCause();
+        String code = exception.getCode();
+        String message = exception.getLocalizedMessage();
+        promise.reject(code, message);
+      } else {
+        promise.reject(toErrorCode(e), e.getMessage());
+      }
     }
   }
 
@@ -244,7 +281,15 @@ public class StripeModule extends ReactContextBaseJavaModule {
       cardDialog.setPromise(promise);
       cardDialog.show(currentActivity.getFragmentManager(), "AddNewCard");
     } catch (Exception e) {
-      promise.reject(toErrorCode(e), e.getMessage());
+      e.printStackTrace();
+      if (e.getCause() instanceof CardException) {
+        CardException exception = (CardException) e.getCause();
+        String code = exception.getCode();
+        String message = exception.getLocalizedMessage();
+        promise.reject(code, message);
+      } else {
+        promise.reject(toErrorCode(e), e.getMessage());
+      }
     }
   }
 
@@ -286,7 +331,14 @@ public class StripeModule extends ReactContextBaseJavaModule {
           public void onError(@NonNull Exception e) {
             getReactApplicationContext().removeActivityEventListener(ael);
             e.printStackTrace();
-            promise.reject(toErrorCode(e), e.getMessage());
+            if (e.getCause() instanceof CardException) {
+              CardException exception = (CardException) e.getCause();
+              String code = exception.getCode();
+              String message = exception.getLocalizedMessage();
+              promise.reject(code, message);
+            } else {
+              promise.reject(toErrorCode(e), e.getMessage());
+            }
           }
         });
       }
@@ -329,7 +381,15 @@ public class StripeModule extends ReactContextBaseJavaModule {
                   promise.reject(UNEXPECTED, "Unexpected state");
               }
             } catch (Exception e) {
-              promise.reject(UNEXPECTED, "Unexpected error");
+              e.printStackTrace();
+              if (e.getCause() instanceof CardException) {
+                CardException exception = (CardException) e.getCause();
+                String code = exception.getCode();
+                String message = exception.getLocalizedMessage();
+                promise.reject(code, message);
+              } else {
+                promise.reject(toErrorCode(e), e.getMessage());
+              }
             }
           }
 
@@ -337,7 +397,14 @@ public class StripeModule extends ReactContextBaseJavaModule {
           public void onError(@NonNull Exception e) {
             getReactApplicationContext().removeActivityEventListener(ael);
             e.printStackTrace();
-            promise.reject(toErrorCode(e), e.getMessage());
+            if (e.getCause() instanceof CardException) {
+              CardException exception = (CardException) e.getCause();
+              String code = exception.getCode();
+              String message = exception.getLocalizedMessage();
+              promise.reject(code, message);
+            } else {
+              promise.reject(toErrorCode(e), e.getMessage());
+            }
           }
         });
       }
@@ -358,6 +425,26 @@ public class StripeModule extends ReactContextBaseJavaModule {
     if (activity != null) {
       mStripe.confirmPayment(activity, extractConfirmPaymentIntentParams(options));
     }
+  }
+
+  @ReactMethod
+  public void retrievePaymentIntent(@NonNull String clientSecret, final Promise promise) {
+    try {
+      PaymentIntent intent = mStripe.retrievePaymentIntentSynchronous(clientSecret);
+      WritableMap intentMapped = Converters.convertPaymentIntentToWritableMap(intent);
+      promise.resolve(intentMapped);
+    } catch (Exception e) {
+      e.printStackTrace();
+      if (e.getCause() instanceof CardException) {
+        CardException exception = (CardException) e.getCause();
+        String code = exception.getCode();
+        String message = exception.getLocalizedMessage();
+        promise.reject(code, message);
+      } else {
+        promise.reject(toErrorCode(e), e.getMessage());
+      }
+    }
+
   }
 
   @ReactMethod
@@ -401,8 +488,16 @@ public class StripeModule extends ReactContextBaseJavaModule {
     mStripe.createPaymentMethod(pmcp, new ApiResultCallback<PaymentMethod>() {
 
       @Override
-      public void onError(Exception error) {
-        promise.reject(toErrorCode(error), error.getMessage());
+      public void onError(Exception e) {
+        e.printStackTrace();
+        if (e.getCause() instanceof CardException) {
+          CardException exception = (CardException) e.getCause();
+          String code = exception.getCode();
+          String message = exception.getLocalizedMessage();
+          promise.reject(code, message);
+        } else {
+          promise.reject(toErrorCode(e), e.getMessage());
+        }
       }
 
       @Override
@@ -545,6 +640,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
     ReadableMap cardParams = getMapOrNull(options, "card");
     ReadableMap billingDetailsParams = getMapOrNull(options, "billingDetails");
     ReadableMap metadataParams = getMapOrNull(options, "metadata");
+    ReadableMap boletoParams = getMapOrNull(options, "boleto");
 
     PaymentMethodCreateParams.Card card = null;
     PaymentMethod.BillingDetails billingDetails = null;
@@ -580,6 +676,10 @@ public class StripeModule extends ReactContextBaseJavaModule {
         setName(getStringOrNull(billingDetailsParams,"name")).
         setPhone(getStringOrNull(billingDetailsParams,"phone")).
         build();
+    }
+
+    if (boletoParams != null) {
+
     }
 
     if (cardParams != null) {

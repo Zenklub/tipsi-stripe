@@ -3,42 +3,21 @@
   "version": "9.1.4",
   "description": "React Native Stripe binding for iOS/Android platforms",
   "main": "src/index.js",
-  "scripts": {
-    "ci": "scripts/local-ci.sh",
-    "build-docs": "scripts/build-docs.sh",
-    "start-docs": "npm start --prefix website/docs",
-    "test": "tape -r esm src/**/*.test.js",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix",
-    "prettier": "prettier",
-    "prettier:js": "prettier --write src/*.{js,jsx} src/**/*.{js,jsx} example/src/*.{js,jsx} example/src/**/*.{js,jsx}"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tipsi/tipsi-stripe.git"
   },
-  "keywords": [
-    "react",
-    "react-native",
-    "stripe",
-    "ios",
-    "android"
+  "_requiredBy": [
+    "/"
   ],
-  "author": "Tipsi",
-  "license": "MIT",
+  "_resolved": "https://registry.npmjs.org/tipsi-stripe/-/tipsi-stripe-9.0.0.tgz",
+  "_spec": "9.0.0",
+  "_where": "/Users/erick/Workspace/Zenklub/mobileapp",
+  "author": {
+    "name": "Tipsi"
+  },
   "bugs": {
     "url": "https://github.com/tipsi/tipsi-stripe/issues"
-  },
-  "homepage": "https://github.com/tipsi/tipsi-stripe#readme",
-  "rnpm": {
-    "commands": {
-      "prelink": "node_modules/tipsi-stripe/scripts/pre-link.sh",
-      "postlink": "node_modules/tipsi-stripe/scripts/post-link.sh"
-    }
-  },
-  "peerDependencies": {
-    "react": ">=15.4.0 || >=16.x",
-    "react-native": ">=0.40"
   },
   "devDependencies": {
     "babel-eslint": "^10.0.2",
@@ -55,5 +34,34 @@
     "prettier": "1.18.x",
     "prop-types": "15.6.1",
     "tape": "4.9.0"
-  }
+  },
+  "homepage": "https://github.com/tipsi/tipsi-stripe#readme",
+  "keywords": [
+    "react",
+    "react-native",
+    "stripe",
+    "ios",
+    "android"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=15.4.0 || >=16.x",
+    "react-native": ">=0.40"
+  },
+  "rnpm": {
+    "commands": {
+      "prelink": "node_modules/tipsi-stripe/scripts/pre-link.sh",
+      "postlink": "node_modules/tipsi-stripe/scripts/post-link.sh"
+    }
+  },
+  "scripts": {
+    "ci": "scripts/local-ci.sh",
+    "build-docs": "scripts/build-docs.sh",
+    "start-docs": "npm start --prefix website/docs",
+    "test": "tape -r esm src/**/*.test.js",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "prettier": "prettier",
+    "prettier:js": "prettier --write src/*.{js,jsx} src/**/*.{js,jsx} example/src/*.{js,jsx} example/src/**/*.{js,jsx}"
+  },
 }
