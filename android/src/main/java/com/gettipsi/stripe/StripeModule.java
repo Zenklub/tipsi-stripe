@@ -32,7 +32,6 @@ import com.stripe.android.PaymentConfiguration;
 import com.stripe.android.SetupIntentResult;
 import com.stripe.android.ApiResultCallback;
 import com.stripe.android.Stripe;
-import com.stripe.android.TokenCallback;
 import com.stripe.android.exception.CardException;
 import com.stripe.android.model.Address;
 import com.stripe.android.model.ConfirmPaymentIntentParams;
