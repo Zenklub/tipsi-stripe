@@ -376,8 +376,7 @@ RCT_EXPORT_METHOD(retrievePaymentIntent:(NSString *)clientSecret
     [api retrievePaymentIntentWithClientSecret:clientSecret completion:^(STPPaymentIntent * _Nullable intent, NSError * _Nullable error) {
         if (!intent && error) {
             self->requestIsCompleted = YES;
-            NSDictionary *jsError = [self->errorCodes valueForKey:kErrorKeyAuthenticationFailed];
-            [self rejectPromiseWithCode:jsError[kErrorKeyCode] message:error.localizedDescription error:error];
+            [self rejectPromiseWithCode:[error.userInfo valueForKey:@"com.stripe.lib:StripeErrorCodeKey"] message:error.localizedDescription error:error];
             return;
         }
         if (intent.status == STPPaymentIntentStatusSucceeded) {
@@ -407,8 +406,7 @@ RCT_EXPORT_METHOD(confirmPaymentIntent:(NSDictionary<NSString*, id>*)untypedPara
                              completion:^(STPPaymentIntent * __nullable intent, NSError * __nullable error){
                                  if (!intent && error) {
                                      self->requestIsCompleted = YES;
-                                     NSDictionary *jsError = [self->errorCodes valueForKey:kErrorKeyAuthenticationFailed];
-                                     [self rejectPromiseWithCode:jsError[kErrorKeyCode] message:error.localizedDescription error:error];
+                                     [self rejectPromiseWithCode:[error.userInfo valueForKey:@"com.stripe.lib:StripeErrorCodeKey"] message:error.localizedDescription error:error];
                                      return;
                                  }
 
@@ -437,6 +435,9 @@ RCT_EXPORT_METHOD(confirmPaymentIntent:(NSDictionary<NSString*, id>*)untypedPara
                                                                                                     [self rejectPromiseWithCode:[self->errorCodes valueForKey:kErrorKeyAuthenticationFailed][kErrorKeyCode]
                                                                                                                         message:error.localizedDescription ?: [self->errorCodes valueForKey:kErrorKeyAuthenticationFailed][kErrorKeyDescription] ?: @"FAILED"
                                                                                                                           error:error];
+                                                                                                    return;
+                                                                                                default:
+                                                                                                    [self rejectPromiseWithCode:[error.userInfo valueForKey:@"com.stripe.lib:StripeErrorCodeKey"] message:error.localizedDescription error:error];
                                                                                                     return;
                                                                                             }
                                                                                         }];

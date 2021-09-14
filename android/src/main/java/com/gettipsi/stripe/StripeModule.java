@@ -31,6 +31,8 @@ import com.stripe.android.PaymentConfiguration;
 import com.stripe.android.SetupIntentResult;
 import com.stripe.android.ApiResultCallback;
 import com.stripe.android.Stripe;
+import com.stripe.android.TokenCallback;
+import com.stripe.android.exception.CardException;
 import com.stripe.android.model.Address;
 import com.stripe.android.model.ConfirmPaymentIntentParams;
 import com.stripe.android.model.ConfirmSetupIntentParams;
@@ -517,8 +519,16 @@ public class StripeModule extends ReactContextBaseJavaModule {
 
     mStripe.createSource(sourceParams, new ApiResultCallback<Source>() {
       @Override
-      public void onError(Exception error) {
-        promise.reject(toErrorCode(error));
+      public void onError(Exception e) {
+        if (e.getCause() instanceof CardException) {
+          CardException exception = (CardException) e.getCause();
+          String code = exception.getCode();
+          String message = exception.getLocalizedMessage();
+          promise.reject(code, message);
+
+        } else {
+          promise.reject(toErrorCode(e), e.getMessage());
+        }
       }
 
       @Override
