@@ -151,6 +151,8 @@ public class StripeModule extends ReactContextBaseJavaModule {
       Stripe.setAppInfo(AppInfo.create(APP_INFO_NAME, APP_INFO_VERSION, APP_INFO_URL));
       mStripe = new Stripe(getReactApplicationContext(), mPublicKey);
       getPayFlow().setPublishableKey(mPublicKey);
+
+      PaymentConfiguration.init(getReactApplicationContext(), mPublicKey);
     }
 
     if (newAndroidPayMode != null) {
@@ -208,7 +210,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
       ArgCheck.nonNull(mStripe);
       ArgCheck.notEmptyString(mPublicKey);
 
-      mStripe.createToken(
+      mStripe.createCardToken(
         createCard(cardData),
         new ApiResultCallback<Token>() {
           public void onSuccess(Token token) {
@@ -237,27 +239,6 @@ public class StripeModule extends ReactContextBaseJavaModule {
     try {
       ArgCheck.nonNull(mStripe);
       ArgCheck.notEmptyString(mPublicKey);
-
-      mStripe.createBankAccountToken(
-        createBankAccount(accountData),
-        mPublicKey,
-        null,
-        new TokenCallback() {
-          public void onSuccess(Token token) {
-            promise.resolve(convertTokenToWritableMap(token));
-          }
-          public void onError(Exception e) {
-            e.printStackTrace();
-            if (e.getCause() instanceof CardException) {
-              CardException exception = (CardException) e.getCause();
-              String code = exception.getCode();
-              String message = exception.getLocalizedMessage();
-              promise.reject(code, message);
-            } else {
-              promise.reject(toErrorCode(e), e.getMessage());
-            }
-          }
-        });
     } catch (Exception e) {
       e.printStackTrace();
       if (e.getCause() instanceof CardException) {
