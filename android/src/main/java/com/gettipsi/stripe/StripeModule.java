@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
 import android.text.TextUtils;
 
 import com.facebook.react.bridge.ActivityEventListener;
@@ -60,6 +61,7 @@ import static com.gettipsi.stripe.util.Converters.convertPaymentMethodToWritable
 import static com.gettipsi.stripe.util.Converters.convertSetupIntentResultToWritableMap;
 import static com.gettipsi.stripe.util.Converters.convertSourceToWritableMap;
 import static com.gettipsi.stripe.util.Converters.convertTokenToWritableMap;
+import static com.gettipsi.stripe.util.Converters.createBankAccount;
 import static com.gettipsi.stripe.util.Converters.createCard;
 import static com.gettipsi.stripe.util.Converters.getBooleanOrNull;
 import static com.gettipsi.stripe.util.Converters.getMapOrNull;
