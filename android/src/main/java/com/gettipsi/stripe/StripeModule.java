@@ -31,6 +31,7 @@ import com.stripe.android.SetupIntentResult;
 import com.stripe.android.SourceCallback;
 import com.stripe.android.Stripe;
 import com.stripe.android.TokenCallback;
+import com.stripe.android.exception.CardException;
 import com.stripe.android.model.Address;
 import com.stripe.android.model.ConfirmPaymentIntentParams;
 import com.stripe.android.model.ConfirmSetupIntentParams;
@@ -212,9 +213,17 @@ public class StripeModule extends ReactContextBaseJavaModule {
           public void onSuccess(Token token) {
             promise.resolve(convertTokenToWritableMap(token));
           }
-          public void onError(Exception error) {
-            error.printStackTrace();
-            promise.reject(toErrorCode(error), error.getMessage());
+          public void onError(Exception e) {
+            e.printStackTrace();
+            if (e.getCause() instanceof CardException) {
+              CardException exception = (CardException) e.getCause();
+              String code = exception.getCode();
+              String message = exception.getLocalizedMessage();
+              promise.reject(code, message);
+
+            } else {
+              promise.reject(toErrorCode(e), e.getMessage());
+            }
           }
         });
     } catch (Exception e) {
@@ -236,13 +245,29 @@ public class StripeModule extends ReactContextBaseJavaModule {
           public void onSuccess(Token token) {
             promise.resolve(convertTokenToWritableMap(token));
           }
-          public void onError(Exception error) {
-            error.printStackTrace();
-            promise.reject(toErrorCode(error), error.getMessage());
+          public void onError(Exception e) {
+            e.printStackTrace();
+            if (e.getCause() instanceof CardException) {
+              CardException exception = (CardException) e.getCause();
+              String code = exception.getCode();
+              String message = exception.getLocalizedMessage();
+              promise.reject(code, message);
+
+            } else {
+              promise.reject(toErrorCode(e), e.getMessage());
+            }
           }
         });
     } catch (Exception e) {
-      promise.reject(toErrorCode(e), e.getMessage());
+      if (e.getCause() instanceof CardException) {
+        CardException exception = (CardException) e.getCause();
+        String code = exception.getCode();
+        String message = exception.getLocalizedMessage();
+        promise.reject(code, message);
+
+      } else {
+        promise.reject(toErrorCode(e), e.getMessage());
+      }
     }
   }
 
@@ -260,7 +285,15 @@ public class StripeModule extends ReactContextBaseJavaModule {
       cardDialog.setPromise(promise);
       cardDialog.show(currentActivity.getFragmentManager(), "AddNewCard");
     } catch (Exception e) {
-      promise.reject(toErrorCode(e), e.getMessage());
+      if (e.getCause() instanceof CardException) {
+        CardException exception = (CardException) e.getCause();
+        String code = exception.getCode();
+        String message = exception.getLocalizedMessage();
+        promise.reject(code, message);
+
+      } else {
+        promise.reject(toErrorCode(e), e.getMessage());
+      }
     }
   }
 
@@ -302,7 +335,15 @@ public class StripeModule extends ReactContextBaseJavaModule {
           public void onError(@NonNull Exception e) {
             getReactApplicationContext().removeActivityEventListener(ael);
             e.printStackTrace();
-            promise.reject(toErrorCode(e), e.getMessage());
+            if (e.getCause() instanceof CardException) {
+              CardException exception = (CardException) e.getCause();
+              String code = exception.getCode();
+              String message = exception.getLocalizedMessage();
+              promise.reject(code, message);
+
+            } else {
+              promise.reject(toErrorCode(e), e.getMessage());
+            }
           }
         });
       }
@@ -353,7 +394,15 @@ public class StripeModule extends ReactContextBaseJavaModule {
           public void onError(@NonNull Exception e) {
             getReactApplicationContext().removeActivityEventListener(ael);
             e.printStackTrace();
-            promise.reject(toErrorCode(e), e.getMessage());
+            if (e.getCause() instanceof CardException) {
+              CardException exception = (CardException) e.getCause();
+              String code = exception.getCode();
+              String message = exception.getLocalizedMessage();
+              promise.reject(code, message);
+
+            } else {
+              promise.reject(toErrorCode(e), e.getMessage());
+            }
           }
         });
       }
@@ -383,7 +432,15 @@ public class StripeModule extends ReactContextBaseJavaModule {
       WritableMap intentMapped = Converters.convertPaymentIntentToWritableMap(intent);
       promise.resolve(intentMapped);
     } catch (Exception e) {
-      promise.reject(toErrorCode(e), e.getMessage());
+      if (e.getCause() instanceof CardException) {
+        CardException exception = (CardException) e.getCause();
+        String code = exception.getCode();
+        String message = exception.getLocalizedMessage();
+        promise.reject(code, message);
+
+      } else {
+        promise.reject(toErrorCode(e), e.getMessage());
+      }
     }
 
   }
@@ -429,8 +486,16 @@ public class StripeModule extends ReactContextBaseJavaModule {
     mStripe.createPaymentMethod(pmcp, new ApiResultCallback<PaymentMethod>() {
 
       @Override
-      public void onError(Exception error) {
-        promise.reject(toErrorCode(error), error.getMessage());
+      public void onError(Exception e) {
+        if (e.getCause() instanceof CardException) {
+          CardException exception = (CardException) e.getCause();
+          String code = exception.getCode();
+          String message = exception.getLocalizedMessage();
+          promise.reject(code, message);
+
+        } else {
+          promise.reject(toErrorCode(e), e.getMessage());
+        }
       }
 
       @Override
@@ -450,8 +515,16 @@ public class StripeModule extends ReactContextBaseJavaModule {
 
     mStripe.createSource(sourceParams, new SourceCallback() {
       @Override
-      public void onError(Exception error) {
-        promise.reject(toErrorCode(error));
+      public void onError(Exception e) {
+        if (e.getCause() instanceof CardException) {
+          CardException exception = (CardException) e.getCause();
+          String code = exception.getCode();
+          String message = exception.getLocalizedMessage();
+          promise.reject(code, message);
+
+        } else {
+          promise.reject(toErrorCode(e), e.getMessage());
+        }
       }
 
       @Override
